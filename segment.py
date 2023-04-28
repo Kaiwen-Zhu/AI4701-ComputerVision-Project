@@ -52,6 +52,9 @@ def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
         for border in borders:
             x, y, w, h = border
             cv2.rectangle(demo_tmp, (x, y), (x+w, y+h), (0,0,255), 3)
+        visualize_resize(demo_tmp, 'demo_tmp')
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     # Extract the regions of interest
     rois = [thresh[y:y+h, x:x+w] for x, y, w, h in borders if h > thresh.shape[0]*0.7]
@@ -69,7 +72,7 @@ def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
     # Visualize the segmented characters
     if visualize:
         for roi, e_roi, d_roi, b_roi, res_roi in zip(rois, e_rois, d_rois, b_rois, res_rois):
-            # compare the original roi and the processed roi
+            # Compare the original roi and the processed roi
             cv2.imshow('roi', roi)
             cv2.imshow('e_roi', e_roi)
             cv2.imshow('d_roi', d_roi)

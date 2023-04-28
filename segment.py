@@ -32,9 +32,7 @@ def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
     if visualize:
         visualize_resize(thresh, 'thresh', close=False)
         visualize_resize(eroded, 'eroded', close=False)
-        visualize_resize(dilated, 'dilated', close=False)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        visualize_resize(dilated, 'dilated', close=True)
 
     # Find contours
     contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -55,24 +53,14 @@ def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
     # Pad the rois
     rois = [cv2.resize(cv2.copyMakeBorder(roi, 10,10,10,10, cv2.BORDER_CONSTANT, value=(0,0,0)),
                         (256,512), interpolation=cv2.INTER_NEAREST) for roi in rois]
-    # rois = [cv2.copyMakeBorder(roi, 10,10,10,10, cv2.BORDER_CONSTANT, value=(0,0,0)) for roi in rois]
-    # Erode and then dilate to remove the noise
-    e_rois = [cv2.erode(roi, kernel, iterations=2) for roi in rois]
-    d_rois = [cv2.dilate(e_roi, kernel, iterations=4) for e_roi in e_rois]
-    # Smoothen the edges
-    b_rois = [cv2.GaussianBlur(d_roi, (51,51), 0) for d_roi in d_rois]
-    res_rois = [cv2.threshold(b_roi, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1] for b_roi in b_rois]
+    # Remove noise by median blur
+    res_rois = [cv2.medianBlur(roi, 23) for roi in rois]
 
     # Visualize the segmented characters
     if visualize:
-        for roi, e_roi, d_roi, b_roi, res_roi in zip(rois, e_rois, d_rois, b_rois, res_rois):
+        for roi, res_roi in zip(rois, res_rois):
             # Compare the original roi and the processed roi
-            cv2.imshow('roi', roi)
-            cv2.imshow('e_roi', e_roi)
-            cv2.imshow('d_roi', d_roi)
-            cv2.imshow('b_roi', b_roi)
-            cv2.imshow('res_roi', res_roi)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+            visualize_resize(roi, 'roi', height=400, close=False)
+            visualize_resize(res_roi, 'res_roi', height=400, close=True)
 
     return res_rois

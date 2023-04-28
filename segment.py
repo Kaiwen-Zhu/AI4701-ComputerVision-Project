@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from utils import visualize_resize
 
 
 def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
@@ -29,14 +30,9 @@ def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
 
     # Visualize the eroded and dilated image
     if visualize:
-        height = 200
-        def visualize_resize(src, title):
-            cv2.namedWindow(title, 0)
-            cv2.resizeWindow(title, int(height*src.shape[1]/src.shape[0]), height)
-            cv2.imshow(title, src)
-        visualize_resize(thresh, 'thresh')
-        visualize_resize(eroded, 'eroded')
-        visualize_resize(dilated, 'dilated')
+        visualize_resize(thresh, 'thresh', close=False)
+        visualize_resize(eroded, 'eroded', close=False)
+        visualize_resize(dilated, 'dilated', close=False)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -53,8 +49,6 @@ def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
             x, y, w, h = border
             cv2.rectangle(demo_tmp, (x, y), (x+w, y+h), (0,0,255), 3)
         visualize_resize(demo_tmp, 'demo_tmp')
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
 
     # Extract the regions of interest
     rois = [thresh[y:y+h, x:x+w] for x, y, w, h in borders if h > thresh.shape[0]*0.7]

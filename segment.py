@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
+from typing import List
 from utils import visualize_resize
 
 
-def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
+def segment_chars(img: np.ndarray, visualize: bool = False, easy: bool = False) -> List[np.ndarray]:
     """Extracts the characters from the license plate and returns a list of the descriptors of them.
 
     Args:
@@ -11,22 +12,60 @@ def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
         visualize (bool, optional): Whether to visualize the segmentation process. Defaults to False.
 
     Returns:
-        list[np.ndarray]: Characters in the image.
+        List[np.ndarray]: Characters in the image.
     """
 
+    # Blur the image to smoothen the image
+    blur = cv2.medianBlur(img, 5)
+    if visualize:
+        visualize_resize(blur, "blur", height=500)
+
     # Binarize the image
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
-    # Invert the image if the text is black to ensure the text is white and the background is black
+    # Process the green plate further
     half = thresh.shape[0]*thresh.shape[1]*255/2
+    is_green = False
     if thresh.sum() > half:
-        thresh = cv2.bitwise_not(thresh)
+        is_green = True
+        # Extract the black characters
+        hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
+        thresh = cv2.inRange(hsv, np.array([0, 0, 0]), np.array([180, 255, 70]))
+        if visualize:
+            visualize_resize(thresh, "char_mask", height=500)
+
+    else:
+        # Removes the white border
+        if visualize:
+            visualize_resize(thresh, 'before', close=False)
+        # Remove the horizontal white borders
+        r_thresh = thresh.shape[1] * 9/10
+        for i in range(thresh.shape[0]//2, -1, -1):
+            if (thresh[i] == 0).sum() > r_thresh:
+                thresh[:i,:] = 0
+                break
+        for i in range(thresh.shape[0]//2, thresh.shape[0]):
+            if (thresh[i] == 0).sum() > r_thresh:
+                thresh[i:,:] = 0
+                break
+        # Remove the vertical white borders
+        c_thresh = thresh.shape[0] * 3/4
+        for j in range(thresh.shape[1]):
+            if (thresh[:,j] == 0).sum() < c_thresh:
+                thresh[:,:j] = 0
+                break
+        for j in range(thresh.shape[1]-1, -1, -1):
+            if (thresh[:,j] == 0).sum() < c_thresh:
+                thresh[:,j:] = 0
+                break
+        if visualize:
+            visualize_resize(thresh, 'after')
 
     # Erode and then dilate to make the characters more clear
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
-    eroded = cv2.erode(thresh, kernel, iterations=5)
-    dilated = cv2.dilate(eroded, kernel, iterations=15)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
+    eroded = cv2.erode(thresh, kernel, iterations=1)
+    dilated = cv2.dilate(eroded, kernel, iterations=20 if easy else 5 if is_green else 8)
 
     # Visualize the eroded and dilated image
     if visualize:
@@ -49,7 +88,7 @@ def segment_chars(img: np.ndarray, visualize: bool = False) -> list[np.ndarray]:
         visualize_resize(demo_tmp, 'demo_tmp')
 
     # Extract the regions of interest
-    rois = [thresh[y:y+h, x:x+w] for x, y, w, h in borders if h > thresh.shape[0]*0.7]
+    rois = [thresh[y:y+h, x:x+w] for x, y, w, h in borders if h > thresh.shape[0]*0.5 and w*1.2 < h < w*4]
     # Pad the rois
     rois = [cv2.resize(cv2.copyMakeBorder(roi, 10,10,10,10, cv2.BORDER_CONSTANT, value=(0,0,0)),
                         (256,512), interpolation=cv2.INTER_NEAREST) for roi in rois]

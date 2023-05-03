@@ -88,12 +88,40 @@ def segment_chars(img: np.ndarray, visualize: bool = False, easy: bool = False) 
         visualize_resize(demo_tmp, 'demo_tmp')
 
     # Extract the regions of interest
-    rois = [thresh[y:y+h, x:x+w] for x, y, w, h in borders if h > thresh.shape[0]*0.5 and w*1.2 < h < w*4]
-    # Pad the rois
-    rois = [cv2.resize(cv2.copyMakeBorder(roi, 10,10,10,10, cv2.BORDER_CONSTANT, value=(0,0,0)),
-                        (256,512), interpolation=cv2.INTER_NEAREST) for roi in rois]
+    rois = [cv2.resize(thresh[y:y+h, x:x+w], (256,512), interpolation=cv2.INTER_NEAREST)
+             for x, y, w, h in borders if h > thresh.shape[0]*0.5 and w*1.2 < h < w*4]
+    
+    # Further process
     # Remove noise by median blur
     res_rois = [cv2.medianBlur(roi, 23) for roi in rois]
+    # Remove the white border of letters and numbers
+    for idx in range(1, len(res_rois)):
+        conts, _ = cv2.findContours(res_rois[idx], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        boxes = [cv2.boundingRect(cont) for cont in conts]
+        if len(boxes) > 1:
+            boxes.sort(key=lambda x: x[-1]*x[-2])
+            # Keep the largest box only
+            for box in boxes[:-1]:
+                x, y, w, h = box
+                res_rois[idx][y:y+h, x:x+w] = 0
+    # Remove the black padding
+    for idx in range(len(res_rois)):
+        for i in range(res_rois[idx].shape[0]):
+            if res_rois[idx][i].sum():
+                res_rois[idx] = res_rois[idx][i:]
+                break
+        for i in range(res_rois[idx].shape[0]-1, -1, -1):
+            if res_rois[idx][i].sum():
+                res_rois[idx] = res_rois[idx][:i+1]
+                break
+        for j in range(res_rois[idx].shape[1]):
+            if res_rois[idx][:,j].sum():
+                res_rois[idx] = res_rois[idx][:,j:]
+                break
+        for j in range(res_rois[idx].shape[1]-1, -1, -1):
+            if res_rois[idx][:,j].sum():
+                res_rois[idx] = res_rois[idx][:,:j+1]
+                break
 
     # Visualize the segmented characters
     if visualize:
@@ -101,5 +129,5 @@ def segment_chars(img: np.ndarray, visualize: bool = False, easy: bool = False) 
             # Compare the original roi and the processed roi
             visualize_resize(roi, 'roi', height=400, close=False)
             visualize_resize(res_roi, 'res_roi', height=400, close=True)
-
+        
     return res_rois

@@ -66,10 +66,3 @@ def locate_plate(img: np.ndarray, visualize: bool = False) -> Tuple[np.ndarray]:
         visualize_resize(roi, "roi", height=500)
 
     return roi, np.array([[corner[0]-minx, corner[1]-miny] for corner in corners.reshape(4,2)])
-
-
-if __name__ == "__main__":
-    path = "resources/images/medium/2-3.jpg"
-    path = "resources/images/difficult/3-2.jpg"
-    img = cv2.imread(path)
-    plate, corners = locate_plate(img, visualize=True)

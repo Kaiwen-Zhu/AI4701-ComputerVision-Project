@@ -15,7 +15,7 @@ def segment_chars(img: np.ndarray, visualize: bool = False, easy: bool = False) 
         List[np.ndarray]: Characters in the image.
     """
 
-    # Blur the image to smoothen the image
+    # Apply median blur to smoothen the image
     blur = cv2.medianBlur(img, 5)
     if visualize:
         visualize_resize(blur, "blur", height=500)
@@ -37,8 +37,8 @@ def segment_chars(img: np.ndarray, visualize: bool = False, easy: bool = False) 
 
     else:
         # Removes the white border
-        if visualize:
-            visualize_resize(thresh, 'before', close=False)
+        # if visualize:
+        #     visualize_resize(thresh, 'before', close=False)
         # Remove the horizontal white borders
         r_thresh = thresh.shape[1] * 9/10
         for i in range(thresh.shape[0]//2, -1, -1):
@@ -59,8 +59,8 @@ def segment_chars(img: np.ndarray, visualize: bool = False, easy: bool = False) 
             if (thresh[:,j] == 0).sum() < c_thresh:
                 thresh[:,j:] = 0
                 break
-        if visualize:
-            visualize_resize(thresh, 'after')
+        # if visualize:
+            # visualize_resize(thresh, 'after')
 
     # Erode and then dilate to make the characters more clear
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
@@ -85,7 +85,7 @@ def segment_chars(img: np.ndarray, visualize: bool = False, easy: bool = False) 
         for border in borders:
             x, y, w, h = border
             cv2.rectangle(demo_tmp, (x, y), (x+w, y+h), (0,0,255), 3)
-        visualize_resize(demo_tmp, 'demo_tmp')
+        visualize_resize(demo_tmp, 'borders')
 
     # Extract the regions of interest
     rois = [cv2.resize(thresh[y:y+h, x:x+w], (256,512), interpolation=cv2.INTER_NEAREST)

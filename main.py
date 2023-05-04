@@ -8,7 +8,7 @@ from evaluate import compute_accuracy, compute_char_jac_sim, compute_2gram_jac_s
 
 
 res = []
-for root, ds, fs in os.walk("resources/images"):
+for root, ds, fs in os.walk("images"):
     for f in fs:
         path = os.path.join(root, f)
         img = cv2.imread(path)
@@ -20,7 +20,7 @@ for root, ds, fs in os.walk("resources/images"):
             chars = segment_chars(plate, visualize=False)
         res.append([f, chars])
 
-recognize_licenses(res)
+recognize_licenses(res, visualize=False)
 
 print('-'*25 + "Results" + '-'*25)
 for f, license in res:
